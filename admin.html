@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>پنل مدیریت نوبت‌ها</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            font-family: Vazirmatn, sans-serif;
+            background: #fff7f9;
+            color: #35232b
+        }
+
+        .wrap {
+            width: min(1100px, 92%);
+            margin: 40px auto
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #ead8de;
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 15px 45px #6b304515
+        }
+
+        .filters,
+        .close-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px
+        }
+
+        .filters input,
+        .close-form input,
+        .close-form button,
+        button {
+            font: inherit;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #ead8de
+        }
+
+        button {
+            cursor: pointer;
+            background: #b85c7a;
+            color: #fff;
+            border-color: #b85c7a
+        }
+
+        .close-form button {
+            background: #a94e69
+        }
+
+        .table-wrap {
+            overflow: auto
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 750px
+        }
+
+        th,
+        td {
+            text-align: right;
+            padding: 13px;
+            border-bottom: 1px solid #f0e4e8;
+            font-size: 13px
+        }
+
+        th {
+            background: #fff3f6
+        }
+
+        .cancel,
+        .open-day {
+            background: #fff;
+            color: #a43f59;
+            border-color: #e7b9c7
+        }
+
+        .open-day {
+            color: #39755a;
+            border-color: #b9dec9
+        }
+
+        .empty {
+            text-align: center;
+            color: #77666d;
+            padding: 30px
+        }
+
+        .muted {
+            color: #77666d;
+            font-size: 13px
+        }
+
+        .success {
+            color: #39755a;
+            font-size: 13px
+        }
+
+        .error {
+            color: #a43f59;
+            font-size: 13px
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 9px;
+            border-radius: 999px;
+            background: #fff0f4;
+            color: #a43f59;
+            font-size: 11px
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="top">
+            <div>
+                <h1>پنل مدیریت نوبت‌ها</h1>
+                <p>دکتر خدیجه خراقانی</p>
+            </div><a href="index.html">بازگشت به سایت</a>
+        </div>
+        <div class="card">
+            <h2>بستن یک روز</h2>
+            <p class="muted">اگر دکتر در یک روز حضور ندارد، آن تاریخ را ببندید تا هیچ کاربری نتواند برای آن روز نوبت
+                بگیرد.</p>
+            <div class="close-form"><input id="closedDate" type="date"><input id="closedReason" type="text"
+                    maxlength="200" placeholder="علت (اختیاری؛ مثلاً مرخصی)"><button onclick="closeDay()">بستن این
+                    روز</button></div>
+            <div id="closeMessage"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>تاریخ بسته</th>
+                            <th>علت</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="closedRows"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card">
+            <h2>نوبت‌ها</h2>
+            <div class="filters"><input id="date" type="date"><button onclick="loadAppointments()">نمایش</button><button
+                    onclick="document.getElementById('date').value='';loadAppointments()">همه نوبت‌ها</button></div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>تاریخ</th>
+                            <th>ساعت</th>
+                            <th>نام</th>
+                            <th>موبایل</th>
+                            <th>توضیح</th>
+                            <th>وضعیت</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>const API = "http://localhost:3000/api"; async function authFetch(u, o = {}) { const r = await fetch(u, o); if (r.status === 401) alert("اطلاعات ورود مدیر صحیح نیست یا وارد نشده است."); return r }
+        function showMsg(text, type = "success") { const el = document.getElementById("closeMessage"); el.className = type; el.textContent = text; setTimeout(() => { el.textContent = "" }, 3500) }
+        async function loadClosedDays() { const r = await authFetch(`${API}/admin/closed-days`); if (!r.ok) return; const data = await r.json(), rows = document.getElementById("closedRows"); rows.innerHTML = ""; if (!data.length) { rows.innerHTML = '<tr><td colspan="3" class="empty">هیچ روزی بسته نشده است.</td></tr>'; return } data.forEach(a => { const tr = document.createElement("tr"); tr.innerHTML = `<td>${a.date}</td><td>${a.reason || "-"}</td><td><button class="open-day" onclick="openDay('${a.date}')">باز کردن روز</button></td>`; rows.appendChild(tr) }) }
+        async function closeDay() { const date = document.getElementById("closedDate").value, reason = document.getElementById("closedReason").value.trim(); if (!date) { showMsg("ابتدا تاریخ را انتخاب کنید.", "error"); return } const r = await authFetch(`${API}/admin/closed-days`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, reason }) }); const data = await r.json().catch(() => ({})); if (!r.ok) { showMsg(data.message || "بستن روز انجام نشد.", "error"); return } showMsg("روز با موفقیت بسته شد."); document.getElementById("closedDate").value = ""; document.getElementById("closedReason").value = ""; loadClosedDays() }
+        async function openDay(date) { if (!confirm(`روز ${date} دوباره باز شود؟`)) return; const r = await authFetch(`${API}/admin/closed-days/${encodeURIComponent(date)}`, { method: "DELETE" }); const data = await r.json().catch(() => ({})); if (!r.ok) { showMsg(data.message || "باز کردن روز انجام نشد.", "error"); return } showMsg("روز دوباره باز شد."); loadClosedDays() }
+        async function loadAppointments() { const d = document.getElementById("date").value, r = await authFetch(`${API}/admin/appointments${d ? "?date=" + encodeURIComponent(d) : ""}`); if (!r.ok) return; const data = await r.json(), rows = document.getElementById("rows"); rows.innerHTML = ""; if (!data.length) { rows.innerHTML = '<tr><td colspan="7" class="empty">نوبتی ثبت نشده است.</td></tr>'; return } data.forEach(a => { const tr = document.createElement("tr"); tr.innerHTML = `<td>${a.date}</td><td>${a.time}</td><td>${a.name}</td><td>${a.phone}</td><td>${a.note || "-"}</td><td>${a.status === "booked" ? "رزرو شده" : "لغو شده"}</td><td>${a.status === "booked" ? `<button class="cancel" onclick="cancelAppointment(${a.id})">لغو</button>` : "-"}</td>`; rows.appendChild(tr) }) }
+        async function cancelAppointment(id) { if (!confirm("این نوبت لغو شود؟")) return; const r = await authFetch(`${API}/admin/appointments/${id}/cancel`, { method: "PATCH" }); if (r.ok) loadAppointments() } loadClosedDays(); loadAppointments();</script>
+</body>
+
+</html>
